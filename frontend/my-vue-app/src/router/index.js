@@ -1,24 +1,76 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Login from '../views/Login.vue';
+import HomeView from '../views/HomeView.vue';
+import AdminLayout from '../layouts/AdminLayout.vue';
 import Users from '../views/Users.vue';
+import Hotels from '../views/Hotels.vue';
 
 const routes = [
-  { path: '/', redirect: '/login' },
-  { path: '/login', component: Login },
-  { path: '/users', component: Users, meta: { requiresAuth: true } }
+  // 1. TRANG CHỦ: Xuất hiện ngay lập tức khi mở web
+  {
+    path: '/',
+    name: 'home',
+    component: HomeView
+  },
+
+  // 2. CỤM TRANG QUẢN TRỊ: Yêu cầu quyền ADMIN mới được vào
+  {
+    path: '/admin',
+    component: AdminLayout,
+    redirect: '/admin/users', 
+    meta: { requiresAdmin: true }, // ĐÁNH DẤU CỤM NÀY CẦN QUYỀN ADMIN
+    children: [
+      {
+        path: 'users',
+        name: 'users',
+        component: Users
+      },
+      {
+        path: 'hotels',
+        name: 'hotels',
+        component: Hotels
+      }
+    ]
+  },
+
+  // 3. TRANG ĐĂNG NHẬP
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('../views/Login.vue')
+  }
 ];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes,
+  routes
 });
 
-// Guard để chặn vào trang Users nếu chưa đăng nhập
+// BẢO VỆ ĐƯỜNG DẪN (ROUTE GUARD)
 router.beforeEach((to, from, next) => {
-  const loggedIn = localStorage.getItem('token');
-  if (to.meta.requiresAuth && !loggedIn) {
-    next('/login');
+  // Lấy dữ liệu từ localStorage
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+
+  // Kiểm tra xem trang (route) chuẩn bị vào có yêu cầu quyền Admin không
+  if (to.meta.requiresAdmin) {
+    
+    if (!token) {
+      // Trường hợp 1: Chưa đăng nhập gì cả -> Đuổi về trang Login
+      alert("Vui lòng đăng nhập để truy cập trang quản trị!");
+      next('/login');
+    } 
+    else if (role !== 'ADMIN') {
+      // Trường hợp 2: Đã đăng nhập nhưng là USER thường -> Đuổi về Trang chủ
+      alert("Bạn không có quyền truy cập vào khu vực này!");
+      next('/');
+    } 
+    else {
+      // Trường hợp 3: Đã đăng nhập và đúng là ADMIN -> Mời vào
+      next();
+    }
+
   } else {
+    // Nếu trang không yêu cầu quyền Admin (như Trang chủ, Trang Đăng nhập) -> Đi lại tự do
     next();
   }
 });

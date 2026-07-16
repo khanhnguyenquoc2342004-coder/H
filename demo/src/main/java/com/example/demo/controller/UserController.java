@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +17,11 @@ public class UserController {
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+    @PostMapping
+    public ResponseEntity<?> createUser(@RequestBody User user) {
+        userRepository.save(user);
+        return ResponseEntity.ok("Thêm người dùng thành công!");
+}
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
         return userRepository.findById(id).map(user -> {
