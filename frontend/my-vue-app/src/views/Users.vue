@@ -2,7 +2,6 @@
   <div style="padding: 24px; background-color: #f5f7fa; min-height: 100vh;">
     <a-card :bordered="false" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
       
-      <!-- Phần Header -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <h2 style="margin: 0; font-size: 24px; font-weight: 600;">Danh sách Người dùng</h2>
@@ -12,15 +11,12 @@
         </div>
         
         <div style="display: flex; gap: 12px;">
-          <!-- CREATE: Nút Thêm mới -->
           <a-button type="primary" style="border-radius: 6px; background-color: #52c41a; border-color: #52c41a;" @click="openAddModal">
             <PlusOutlined /> Thêm mới
           </a-button>
-          
         </div>
       </div>
 
-      <!-- READ: Bảng hiển thị dữ liệu -->
       <a-table 
         :columns="columns" 
         :data-source="users" 
@@ -39,15 +35,12 @@
 
           <template v-else-if="column.key === 'actions'">
             <div style="display: flex; justify-content: center; gap: 8px;">
-              
-              <!-- UPDATE: Nút mở form sửa -->
               <a-tooltip title="Chỉnh sửa">
                 <a-button shape="circle" size="middle" @click="openEditModal(record)">
                   <template #icon><EditOutlined style="color: #1890ff;" /></template>
                 </a-button>
               </a-tooltip>
 
-              <!-- DELETE: Nút xóa có xác nhận -->
               <a-tooltip title="Xóa tài khoản">
                 <a-popconfirm 
                   title="Xóa tài khoản này?" 
@@ -66,7 +59,6 @@
       </a-table>
     </a-card>
 
-    <!-- MODAL DÙNG CHUNG CHO CREATE VÀ UPDATE -->
     <a-modal
       v-model:open="isModalVisible"
       :title="isEditMode ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'"
@@ -85,7 +77,6 @@
         />
       </div>
 
-      <!-- Chỉ hiện ô nhập Mật khẩu khi tạo mới -->
       <div v-if="!isEditMode" style="margin-top: 16px;">
         <label style="font-weight: 500;">Mật khẩu:</label>
         <a-input-password 
@@ -100,25 +91,27 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted } from 'vue';
+import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
-import api from '../services/api';
+import { message } from 'ant-design-vue';
 import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined
 } from '@ant-design/icons-vue';
 
-const users = ref([]);
+const store = useStore();
 const router = useRouter();
 
-// Trạng thái của Modal
+const users = computed(() => store.state.users);
+
 const isModalVisible = ref(false);
 const isEditMode = ref(false);
 const formData = reactive({
   id: null,
   username: '',
-  password: '' // Backend Spring Boot thường cần pass khi tạo mới
+  password: '' 
 });
 
 const columns = [
@@ -127,18 +120,6 @@ const columns = [
   { title: 'Hành động', key: 'actions', width: 150, align: 'center' },
 ];
 
-
-// [READ] - Lấy danh sách
-const fetchUsers = async () => {
-  try {
-    const response = await api.get('/users');
-    users.value = response.data;
-  } catch (error) {
-    console.error("Lỗi lấy danh sách:", error);
-  }
-};
-
-// Mở form Thêm mới
 const openAddModal = () => {
   isEditMode.value = false;
   formData.id = null;
@@ -147,63 +128,52 @@ const openAddModal = () => {
   isModalVisible.value = true;
 };
 
-// Mở form Sửa
 const openEditModal = (record) => {
   isEditMode.value = true;
   formData.id = record.id;
   formData.username = record.username;
-  formData.password = ''; // Không cần pass khi sửa tên
+  formData.password = ''; 
   isModalVisible.value = true;
 };
 
-// [CREATE & UPDATE] - Xử lý khi bấm nút Lưu trên Modal
 const handleSave = async () => {
   if (!formData.username.trim()) {
-    alert("Vui lòng nhập tên tài khoản!");
+    message.warning("Vui lòng nhập tên tài khoản!");
+    return;
+  }
+  
+  if (!isEditMode.value && !formData.password.trim()) {
+    message.warning("Vui lòng nhập mật khẩu!");
     return;
   }
 
   try {
-    if (isEditMode.value) {
-      // Gọi API PUT để Sửa
-      await api.put(`/users/${formData.id}`, 
-        { username: formData.username, password: formData.password }, 
-       
-
-      );  
-    } else {
-      // Gọi API POST để Thêm mới
-      if (!formData.password.trim()) {
-        alert("Vui lòng nhập mật khẩu!");
-        return;
-      }
+    await store.dispatch('saveUser', {
+      id: formData.id,
+      username: formData.username,
+      password: formData.password,
+      isEditMode: isEditMode.value
+    });
     
-      await api.post('/auth/register', 
-        { username: formData.username, password: formData.password }, 
-       
-      );
-    }
-    
-    isModalVisible.value = false; // Đóng modal
-    fetchUsers(); // Tải lại bảng
+    isModalVisible.value = false; 
+    message.success(isEditMode.value ? "Cập nhật thành công!" : "Thêm mới thành công!");
   } catch (error) {
-    alert("Lỗi thật sự là: " + error.message);
+    message.error("Lỗi: " + error.message);
     console.error("Chi tiết lỗi:", error);
   }
 };
 
-// [DELETE] - Xóa người dùng
 const deleteUser = async (id) => {
   try {
-    await api.delete(`/users/${id}`);
-    fetchUsers();
+    await store.dispatch('deleteUser', id);
+    message.success("Đã xóa tài khoản thành công!");
   } catch (error) {
+    message.error("Lỗi xóa người dùng!");
     console.error("Lỗi xóa người dùng:", error);
   }
 };
 
-
 onMounted(() => {
-  fetchUsers();
+  store.dispatch('fetchUsers');
 });
 </script>

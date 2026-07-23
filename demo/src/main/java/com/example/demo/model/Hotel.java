@@ -9,7 +9,6 @@ public class Hotel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String name;
     private String address;
     private String description;
@@ -17,11 +16,10 @@ public class Hotel {
     private String imageUrl;
     private String hotelLink;
 
-    // --- Constructor rỗng (Bắt buộc phả   i có cho JPA) ---
+
     public Hotel() {
     }
 
-    // --- Constructor đầy đủ ---
     public Hotel(String name, String address, String description, double price, String imageUrl, String hotelLink) {
         this.name = name;
         this.address = address;
@@ -29,6 +27,7 @@ public class Hotel {
         this.price = price;
         this.imageUrl = imageUrl;
         this.hotelLink = hotelLink;
+        
     }
 
     // --- Getter và Setter (Đây là phần thay thế cho Lombok) ---
@@ -46,6 +45,7 @@ public class Hotel {
 
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
+
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }

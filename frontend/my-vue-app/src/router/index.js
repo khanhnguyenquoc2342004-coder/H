@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import AdminLayout from '../layouts/AdminLayout.vue';
 import Users from '../views/Users.vue';
 import Hotels from '../views/Hotels.vue';
+import store from '../store';
 
 const routes = [
   // 1. TRANG CHỦ: Xuất hiện ngay lập tức khi mở web
@@ -45,16 +46,17 @@ const router = createRouter({
   routes
 });
 
-// BẢO VỆ ĐƯỜNG DẪN (ROUTE GUARD)
+// BẢO VỆ ĐƯỜNG DẪN (ROUTE GUARD) SỬ DỤNG VUEX
 router.beforeEach((to, from, next) => {
-  // Lấy dữ liệu từ localStorage
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  
+  // Lấy dữ liệu trực tiếp từ Vuex Store thay vì localStorage
+  const isLoggedIn = store.state.isLoggedIn;
+  const role = store.state.userRole;
 
   // Kiểm tra xem trang (route) chuẩn bị vào có yêu cầu quyền Admin không
   if (to.meta.requiresAdmin) {
     
-    if (!token) {
+    if (!isLoggedIn) {
       // Trường hợp 1: Chưa đăng nhập gì cả -> Đuổi về trang Login
       alert("Vui lòng đăng nhập để truy cập trang quản trị!");
       next('/login');

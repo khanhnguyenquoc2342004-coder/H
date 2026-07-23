@@ -11,6 +11,7 @@
           <team-outlined />
           <span>Quản lý Người dùng</span>
         </a-menu-item>
+        
         <a-menu-item key="hotels">
           <home-outlined />
           <span>Quản lý Khách sạn</span>
@@ -48,10 +49,12 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { TeamOutlined, HomeOutlined, UserOutlined } from '@ant-design/icons-vue';
+import { useStore } from 'vuex'; 
+import { TeamOutlined, HomeOutlined, UserOutlined} from '@ant-design/icons-vue';
 
 const router = useRouter();
 const route = useRoute();
+const store = useStore(); // Khởi tạo Store
 
 const collapsed = ref(false);
 const selectedKeys = ref([route.name || 'users']);
@@ -65,9 +68,16 @@ const handleMenuClick = (e) => {
   router.push({ name: e.key });
 };
 
-const logout = () => {
-  localStorage.removeItem('token');
-  router.push({ name: 'login' });
+// ĐÃ SỬA: Gọi action logout từ Vuex để dọn dẹp state trước khi chuyển trang
+const logout = async () => {
+  try {
+    await store.dispatch('logout'); // Dọn dẹp kho dữ liệu tập trung
+  } catch(e) {
+    console.error(e);
+  } finally {
+    localStorage.removeItem('token');
+    router.push({ name: 'login' });
+  }
 };
 </script>
 

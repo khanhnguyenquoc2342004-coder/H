@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/hotels")
-@CrossOrigin(origins = "*") // Cho phép Frontend gọi tới
 public class HotelController {
 
     @Autowired

@@ -97,88 +97,63 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../services/api';
+import { useStore } from 'vuex';
 import { message } from 'ant-design-vue';
-import { 
-  UserOutlined, 
-  LockOutlined, 
-  GoogleOutlined, 
-  FacebookOutlined 
-} from '@ant-design/icons-vue';
+import { UserOutlined, LockOutlined, GoogleOutlined, FacebookOutlined } from '@ant-design/icons-vue';
 
 const router = useRouter();
+const store = useStore(); 
 const activeTab = ref('login');
 const isLoading = ref(false);
 
-const loginForm = reactive({
-  username: '',
-  password: '',
-  remember: false
-});
+const loginForm = reactive({ username: '', password: '', remember: false });
+const registerForm = reactive({ username: '', password: '' });
 
-const registerForm = reactive({
-  username: '',
-  password: ''
-});
-
-// XỬ LÝ ĐĂNG NHẬP (Đã cập nhật luồng phân quyền)
+// --- XỬ LÝ ĐĂNG NHẬP VỚI VUEX ---
 const handleLogin = async () => {
   isLoading.value = true;
   try {
-    const response = await api.post('/auth/login', {
+    await store.dispatch('login', {
       username: loginForm.username,
       password: loginForm.password
     });
     
-    // 1. Lưu token vào localStorage
-    localStorage.setItem('token', response.data.token);
-    
-    // 2. Lưu quyền (role) vào localStorage để phân quyền hiển thị (fallback về 'USER' nếu backend quên trả về)
-    localStorage.setItem('role', response.data.role || 'USER');
-
     message.success('Đăng nhập thành công!');
     
-    // 3. Phân luồng chuyển trang dựa theo quyền
-    if (response.data.role === 'ADMIN') {
-      router.push('/admin/users'); // Hoặc /admin/hotels tùy bạn muốn Admin vào đâu trước
+    // 2. Lấy role trực tiếp từ Vuex để điều hướng
+    const role = store.state.userRole; 
+    
+    if (role === 'ADMIN') {
+      router.push('/admin/users');
     } else {
-      router.push('/'); // Đẩy User bình thường về Trang chủ
+      router.push('/');
     }
 
   } catch (error) {
-    if (error.response && error.response.status === 401) {
-      message.error('Sai tài khoản hoặc mật khẩu!');
-    } else {
-      message.error('Lỗi kết nối đến máy chủ!');
-    }
+    message.error('Sai tài khoản hoặc mật khẩu!');
   } finally {
     isLoading.value = false;
   }
 };
 
-// XỬ LÝ ĐĂNG KÝ
+// --- XỬ LÝ ĐĂNG KÝ (Giữ nguyên gọi API cục bộ vì không ảnh hưởng state chung) ---
 const handleRegister = async () => {
   isLoading.value = true;
   try {
-    const response = await api.post('/auth/register', {
+    await store.dispatch('register', {
       username: registerForm.username,
       password: registerForm.password
     });
     
     message.success('Đăng ký thành công! Vui lòng đăng nhập.');
     
-    // Đăng ký xong tự động chuyển sang tab đăng nhập và điền sẵn username
     activeTab.value = 'login';
     loginForm.username = registerForm.username;
     registerForm.username = '';
     registerForm.password = '';
     
   } catch (error) {
-    if (error.response && error.response.data) {
-      message.error(error.response.data); // Hiển thị lỗi từ Spring Boot (VD: "Trùng tài khoản")
-    } else {
-      message.error('Đăng ký thất bại!');
-    }
+    message.error(error.response?.data || 'Đăng ký thất bại!');
   } finally {
     isLoading.value = false;
   }
@@ -186,190 +161,34 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-/* Reset margin/padding nội bộ */
-* {
-  box-sizing: border-box;
-}
 
-.login-wrapper {
-  display: flex;
-  min-height: 100vh;
-  background-color: #fff;
-}
-
-/* Cột trái: Ảnh nền */
-.login-banner {
-  flex: 1;
-  background: url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1600') no-repeat center center;
-  background-size: cover;
-  position: relative;
-  display: none; /* Ẩn trên mobile */
-}
-
-@media (min-width: 900px) {
-  .login-banner {
-    display: block;
-  }
-}
-
-.banner-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 53, 128, 0.6), rgba(0, 0, 0, 0.8));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 60px;
-  color: white;
-}
-
-.brand-name {
-  font-size: 48px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 16px;
-  letter-spacing: 1px;
-}
-
-.brand-slogan {
-  font-size: 18px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 500px;
-}
-
-/* Cột phải: Form nhập liệu */
-.login-form-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
-  background-color: #f9fafb;
-}
-
-.form-box {
-  width: 100%;
-  max-width: 420px;
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-}
-
-.form-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 8px;
-}
-
-.form-subtitle {
-  color: #6b7280;
-  margin-bottom: 24px;
-  font-size: 14px;
-}
-
-.input-icon {
-  color: #9ca3af;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  font-size: 14px;
-}
-
-.forgot-link {
-  color: #0071c2;
-  font-weight: 500;
-}
-
-.forgot-link:hover {
-  text-decoration: underline;
-}
-
-.submit-btn {
-  background-color: #0071c2;
-  border-color: #0071c2;
-  font-weight: 600;
-  height: 44px;
-  border-radius: 6px;
-}
-
-.submit-btn:hover {
-  background-color: #005998;
-  border-color: #005998;
-}
-
-/* Các thành phần phụ (Divider & Social) */
-.divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 24px 0;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.divider span {
-  padding: 0 10px;
-}
-
-.social-login {
-  display: flex;
-  gap: 12px;
-}
-
-.social-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 44px;
-  border-radius: 6px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.back-home {
-  margin-top: 32px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.back-home a {
-  color: #6b7280;
-  transition: color 0.3s;
-}
-
-.back-home a:hover {
-  color: #0071c2;
-}
-
-/* Custom lại Ant Design Tabs */
-:deep(.ant-tabs-nav::before) {
-  border-bottom: 1px solid #e5e7eb;
-}
-:deep(.ant-tabs-tab) {
-  font-size: 16px;
-  padding: 12px 0;
-}
-:deep(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
-  color: #0071c2;
-  font-weight: 600;
-}
-:deep(.ant-tabs-ink-bar) {
-  background: #0071c2;
-}
+* { box-sizing: border-box; }
+.login-wrapper { display: flex; min-height: 100vh; background-color: #fff; }
+.login-banner { flex: 1; background: url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1600') no-repeat center center; background-size: cover; position: relative; display: none; }
+@media (min-width: 900px) { .login-banner { display: block; } }
+.banner-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0, 53, 128, 0.6), rgba(0, 0, 0, 0.8)); display: flex; flex-direction: column; justify-content: center; padding: 60px; color: white; }
+.brand-name { font-size: 48px; font-weight: 700; color: white; margin-bottom: 16px; letter-spacing: 1px; }
+.brand-slogan { font-size: 18px; line-height: 1.6; opacity: 0.9; max-width: 500px; }
+.login-form-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 20px; background-color: #f9fafb; }
+.form-box { width: 100%; max-width: 420px; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+.form-title { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+.form-subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
+.input-icon { color: #9ca3af; }
+.form-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 14px; }
+.forgot-link { color: #0071c2; font-weight: 500; }
+.forgot-link:hover { text-decoration: underline; }
+.submit-btn { background-color: #0071c2; border-color: #0071c2; font-weight: 600; height: 44px; border-radius: 6px; }
+.submit-btn:hover { background-color: #005998; border-color: #005998; }
+.divider { display: flex; align-items: center; text-align: center; margin: 24px 0; color: #9ca3af; font-size: 13px; }
+.divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #e5e7eb; }
+.divider span { padding: 0 10px; }
+.social-login { display: flex; gap: 12px; }
+.social-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 6px; font-weight: 500; color: #374151; }
+.back-home { margin-top: 32px; text-align: center; font-size: 14px; }
+.back-home a { color: #6b7280; transition: color 0.3s; }
+.back-home a:hover { color: #0071c2; }
+:deep(.ant-tabs-nav::before) { border-bottom: 1px solid #e5e7eb; }
+:deep(.ant-tabs-tab) { font-size: 16px; padding: 12px 0; }
+:deep(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) { color: #0071c2; font-weight: 600; }
+:deep(.ant-tabs-ink-bar) { background: #0071c2; }
 </style>

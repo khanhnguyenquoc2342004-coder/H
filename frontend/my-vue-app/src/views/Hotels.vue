@@ -37,7 +37,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:open="isModalVisible" :title="isEdit ? 'Sửa' : 'Thêm'" @ok="saveHotel" @cancel="isModalVisible = false">
+    <a-modal v-model:open="isModalVisible" :title="isEdit ? 'Sửa' : 'Thêm'" @ok="submitHotel" @cancel="isModalVisible = false">
       <a-form layout="vertical" @submit.prevent>
         
         <a-form-item label="Tên khách sạn">
@@ -47,7 +47,8 @@
         <a-form-item label="Địa chỉ">
           <a-input v-model:value="form.address" placeholder="VD: 123 Đường ABC, Hà Nội" />
         </a-form-item>
-        
+
+   
         <a-form-item label="Giá (VNĐ)">
           <a-input-number v-model:value="form.price" style="width: 100%;" placeholder="VD: 500000" />
         </a-form-item>
@@ -71,93 +72,83 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../services/api';
+import { ref, computed, onMounted } from 'vue';
+import { useStore } from 'vuex';
 import { message } from 'ant-design-vue';
 
-const hotels = ref([]);
+const store = useStore();
+
+const userRole = computed(() => store.state.userRole);
+const hotels = computed(() => store.state.hotels);
+
 const isModalVisible = ref(false);
 const isEdit = ref(false);
 
-// THÊM: Lấy quyền của người dùng hiện tại từ bộ nhớ
-const userRole = ref(localStorage.getItem('role') || 'USER');
-
 const form = ref({ 
-  id: null, 
-  name: '', 
-  address: '', 
-  price: '', 
-  imageUrl: '', 
-  hotelLink: '' 
+  id: null, name: '', address: '', price: '', imageUrl: '', hotelLink: ''
 });
 
-// THÊM: Tách mảng columns thành dạng động
-const baseColumns = [
-  { title: 'Hình ảnh', dataIndex: 'imageUrl', key: 'imageUrl', width: '120px' },
-  { title: 'Tên', dataIndex: 'name' },
-  { title: 'Địa chỉ', dataIndex: 'address' },
-  { title: 'Giá', dataIndex: 'price' },
-  { title: 'Link Web', dataIndex: 'hotelLink', key: 'hotelLink' }
-];
+const columns = computed(() => {
+  const baseCols = [
+    { title: 'Hình ảnh', dataIndex: 'imageUrl', key: 'imageUrl', width: '120px' },
+    { title: 'Tên', dataIndex: 'name' },
+    { title: 'Địa chỉ', dataIndex: 'address' },
+    { title: 'Giá', dataIndex: 'price' },
+    { title: 'Link Web', dataIndex: 'hotelLink', key: 'hotelLink' }
+  ];
 
-const columns = ref([...baseColumns]);
-
-// THÊM: Nếu là ADMIN thì mới hiển thị cột Hành động (Sửa/Xóa)
-if (userRole.value === 'ADMIN') {
-  columns.value.push({ title: 'Hành động', key: 'actions' });
-}
+  if (userRole.value === 'ADMIN') {
+    baseCols.push({ title: 'Hành động', key: 'actions' });
+  }
+  return baseCols;
+});
 
 const openModal = (record) => {
   isEdit.value = !!record;
+  // Reset lại form chuẩn
   form.value = record 
     ? { ...record } 
     : { id: null, name: '', address: '', price: '', imageUrl: '', hotelLink: '' }; 
   isModalVisible.value = true;
 };
 
-// Hàm lưu dữ liệu
-const saveHotel = async () => {
+const fetchHotels = async () => {
+  await store.dispatch('fetchHotels');
+};
+
+const submitHotel = async () => {
   try {
     const payload = {
       ...form.value,
       price: form.value.price === '' ? 0 : Number(form.value.price)
     };
 
+  
+    await store.dispatch('saveHotel', payload);
+
     if (isEdit.value) {
-      await api.put(`/hotels/${form.value.id}`, payload); 
       message.success("Cập nhật khách sạn thành công!");
     } else {
-      await api.post('/hotels', payload); 
-      message.success("Thêm khách sạn thành công!");
+      message.success("Thêm khách sạn thành công!"); 
     }
 
     isModalVisible.value = false;
-    fetchHotels();
   } catch (error) {
     message.error("Lỗi khi lưu! Vui lòng kiểm tra lại.");
-    console.error(error);
-  }
-};
-
-const fetchHotels = async () => {
-  try {
-    const res = await api.get('/hotels'); 
-    hotels.value = res.data;
-  } catch (error) {
-    console.error("Lỗi lấy danh sách:", error);
-  }
+    }
 };
 
 const deleteHotel = async (id) => {
   try {
-    await api.delete(`/hotels/${id}`);
+    await store.dispatch('deleteHotel', id);
     message.success("Đã xóa khách sạn!");
-    fetchHotels(); 
   } catch (error) {
     console.error("Lỗi xóa khách sạn:", error);
     message.error("Lỗi khi xóa!");
   }
 };
 
-onMounted(fetchHotels);
+onMounted(() => {
+  fetchHotels();
+});
 </script>

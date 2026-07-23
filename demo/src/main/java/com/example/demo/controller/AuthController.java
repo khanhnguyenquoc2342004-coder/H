@@ -19,7 +19,7 @@ import java.util.Optional; // Cần import thêm Optional
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // Cho phép VueJS gọi API
+
 public class AuthController {
     @Autowired AuthenticationManager authenticationManager;
     @Autowired UserRepository userRepository;
@@ -37,8 +37,7 @@ public class AuthController {
         response.put("token", jwt);
         response.put("username", loginRequest.getUsername());
 
-        // --- CẬP NHẬT: Lấy thông tin user để đính kèm quyền (Role) gửi về Vue.js ---
-        // Giả định hàm findByUsername trả về Optional<User>
+        
         Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
         if (userOptional.isPresent() && userOptional.get().getRole() != null) {
             response.put("role", userOptional.get().getRole());

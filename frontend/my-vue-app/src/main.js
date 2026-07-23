@@ -1,10 +1,14 @@
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router'; 
+import store from './store';
 import Antd from 'ant-design-vue';
-import 'ant-design-vue/dist/reset.css';// Đảm bảo anh đã tạo thư mục router và file index.js bên trong
+import 'ant-design-vue/dist/reset.css';
 
 const app = createApp(App);
+
+app.use(store); 
 app.use(router);
 app.use(Antd);
-app.mount('#app');  
+
+app.mount('#app');
